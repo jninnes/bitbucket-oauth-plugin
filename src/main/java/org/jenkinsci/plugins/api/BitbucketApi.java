@@ -20,4 +20,6 @@ public class BitbucketApi extends DefaultApi10a {
     public String getRequestTokenEndpoint() {
         return OAUTH_ENDPOINT + "request_token";
     }
+
+
 }

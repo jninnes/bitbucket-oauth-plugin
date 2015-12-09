@@ -2,14 +2,18 @@ package org.jenkinsci.plugins.api;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
 
+import org.acegisecurity.context.SecurityContextHolder;
 import org.acegisecurity.userdetails.UserDetails;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
-import org.jenkinsci.plugins.api.BitbucketUser.BitbucketUserResponce;
+import org.jenkinsci.plugins.BitbucketAuthenticationToken;
+import org.jenkinsci.plugins.api.BitbucketUser.BitbucketUserResponse;
 import org.scribe.builder.ServiceBuilder;
 import org.scribe.model.OAuthRequest;
 import org.scribe.model.Response;
@@ -22,7 +26,7 @@ import com.google.gson.Gson;
 
 public class BitbucketApiService {
 
-    private static final String API_ENDPOINT = "https://api.bitbucket.org/1.0/";
+    private static final String API_ENDPOINT = "https://api.bitbucket.org/2.0/";
 
     private OAuthService service;
 
@@ -58,7 +62,7 @@ public class BitbucketApiService {
         Response response = request.send();
         String json = response.getBody();
         Gson gson = new Gson();
-        BitbucketUserResponce userResponce = gson.fromJson(json, BitbucketUserResponce.class);
+        BitbucketUserResponse userResponce = gson.fromJson(json, BitbucketUserResponse.class);
         if (userResponce != null) {
             return userResponce.user;
         } else {
@@ -68,12 +72,12 @@ public class BitbucketApiService {
 
     public UserDetails getUserByUsername(String username) {
         InputStreamReader reader = null;
-        BitbucketUserResponce userResponce = null;
+        BitbucketUserResponse userResponce = null;
         try {
             URL url = new URL(API_ENDPOINT + "users/" + username);
             reader = new InputStreamReader(url.openStream(), "UTF-8");
             Gson gson = new Gson();
-            userResponce = gson.fromJson(reader, BitbucketUserResponce.class);
+            userResponce = gson.fromJson(reader, BitbucketUserResponse.class);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         } catch (MalformedURLException e) {
@@ -89,6 +93,24 @@ public class BitbucketApiService {
         } else {
             return null;
         }
+    }
+
+    public void postBuildStatus(BuildStatus buildStatus, String owner, String repoName, String revision) {
+        InputStreamReader reader = null;
+        BitbucketUserResponse userResponce = null;
+        BitbucketAuthenticationToken auth = (BitbucketAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return;
+        }
+        OAuthRequest request = new OAuthRequest(Verb.GET, API_ENDPOINT + "repositories/" + owner + "/" + repoName + "/commits/"
+                + revision + "/statuses/build");
+        service.signRequest(auth.getAccessToken(), request);
+
+        request.addPayload(new Gson().toJson(buildStatus));
+
+        request.send().getBody();
+
+
     }
 
 }

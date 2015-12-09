@@ -9,7 +9,7 @@ import com.google.gson.annotations.SerializedName;
 
 public class BitbucketUser implements UserDetails {
 
-    public class BitbucketUserResponce {
+    public class BitbucketUserResponse {
         public BitbucketUser user;
     }
 
